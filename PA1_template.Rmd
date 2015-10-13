@@ -1,25 +1,90 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Assignment 1"
+output: html_document
 ---
 
+## Loading the data
 
-## Loading and preprocessing the data
+```{r}
+data <- read.table("activity.csv", sep=",", header=TRUE)
+data$date <- as.Date(data$date)
+```
 
+## Computing the average number of steps per day
+```{r}
+options(scipen=999) # Removing scientific notation
+totalsteps <- sum(data$steps, na.rm=TRUE)
+(steps_per_day <- aggregate(steps ~ date, data=data, sum, na.rm=TRUE))
+plot(steps_per_day[,1], steps_per_day[,2], type="h", xlab="steps", 
+     main="Steps taken per day", col="gold")
+spdmean <- mean(steps_per_day[,2])
+spdmedian <- median(steps_per_day[,2])
+```
+The total number of steps taken is `r totalsteps`. 
+The mean number of steps per day is `r round(spdmean, 2)`, while the median is 
+`r round(spdmedian, 2)`. 
 
+## Analyzing steps taken by time interval
+```{r}
+steps_by_interval <- aggregate(steps ~ interval, data=data, sum, na.rm=TRUE)
+plot(steps_by_interval[,1], steps_by_interval[,2], type="l", col="red", 
+     xlab="Time Interval", ylab= "Steps taken", main="Steps by time interval")
+best_interval <- steps_by_interval[,1][which.max(steps_by_interval[,2])]
+```
 
-## What is mean total number of steps taken per day?
+The time interval on which more steps were taken (corresponding to the peak in
+the time series plot) is the interval "`r best_interval`".
 
+## Imputing missing data
+```{r}
+sum(!complete.cases(data))
+fit <- lm(steps ~ date + interval, data=data)
 
+imputations <- predict(fit, data[!complete.cases(data),])
+data2 <- data
+data2[!complete.cases(data2),1] <- imputations
 
-## What is the average daily activity pattern?
+sum(!complete.cases(data2))
 
+(steps_per_day2 <- aggregate(steps ~ date, data=data2, sum))
+plot(steps_per_day2[,1], steps_per_day2[,2], type="h", xlab="steps", 
+     main="Steps taken per day", col="gold")
+spdmean2 <- mean(steps_per_day2[,2])
+spdmedian2 <- median(steps_per_day2[,2])
 
+```
+I decided to impute missing data by linear prediction. Both the day and the
+time interval are used as predictors of the number of steps taken. This should
+impute values quite similar in distribution to those regularly observed. 
 
-## Imputing missing values
+We can see that the mean of the new dataset (with missing data imputed) is 
+`r round(spdmean2, 2)`, and its median `r round(spdmedian2, 2)`. The difference between these statistics
+and those computed on the original dataset are, respectively, `r round(spdmean - spdmean2, 2)`
+and `r round(spdmedian - spdmedian2, 2)`. 
 
+## Analyzing activity patterns in weekdays and weekends
+```{r}
+Sys.setlocale("LC_TIME", "C") # Necessary to have weekdays in english
+wd <- weekdays(data2$date)
+data2$weekday <- (wd == "Saturday" | wd == "Sunday")
+data2$weekday <- factor(data2$weekday, levels=c(TRUE, FALSE), 
+                        labels=c("weekend", "weekday"))
 
+steps_by_interval2 <- aggregate(steps ~ interval + weekday, data=data2, sum, 
+                                na.rm=TRUE)
 
-## Are there differences in activity patterns between weekdays and weekends?
+par(mfrow=c(1, 2))
+plot(steps_by_interval2[steps_by_interval2$weekday == "weekday",1], 
+     steps_by_interval2[steps_by_interval2$weekday == "weekday",3], type="l", 
+     col="red", xlab="Time Interval", ylab= "Steps taken", 
+     main="Weekday", ylim=c(0,9000))
+
+plot(steps_by_interval2[steps_by_interval2$weekday == "weekend",1], 
+     steps_by_interval2[steps_by_interval2$weekday == "weekend",3], type="l", 
+     col="green", xlab="Time Interval", ylab= "Steps taken", 
+     main="Weekend", ylim=c(0,9000))
+
+```
+
+We can see that steps taken in the weekend and steps taken in weekdays follow
+very different patterns. 
