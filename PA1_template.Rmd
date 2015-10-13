@@ -6,8 +6,10 @@ output: html_document
 ## Loading the data
 
 ```{r}
+library(knitr)
 data <- read.table("activity.csv", sep=",", header=TRUE)
 data$date <- as.Date(data$date)
+opts_chunk$set(cache=TRUE)
 ```
 
 ## Computing the average number of steps per day
